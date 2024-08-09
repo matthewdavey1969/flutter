@@ -5582,6 +5582,10 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
 
   @override
   void markBlocksUserActions(bool blocks) {
+    if (blocks && _effectiveConfig.isBlockingUserActions) {
+      return;
+    }
+    blocks = blocks || _ancestorsAndExplicitnessUntilParent.any((_RenderObjectSemanticsAndExplicitness parent) => parent.$1.semanticsConfiguration.isBlockingUserActions);
     if (blocks == _effectiveConfig.isBlockingUserActions) {
       return;
     }
@@ -5601,8 +5605,7 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
         // Unblocking user action may causes merge conflicts between child
         // fragments.
         //
-        // Marking the owner dirty causes it to reevaluate merge conflict if
-        // its getSemantics is called.
+        // Marking the owner dirty causes it to re-evaluate merge conflict.
         owner.isDirty = true;
       }
     }
@@ -5610,6 +5613,10 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
 
   @override
   void markMergesToParent(bool merges) {
+    if (merges && _mergeIntoParent) {
+      return;
+    }
+    merges = merges || _ancestorsAndExplicitnessUntilParent.any((_RenderObjectSemanticsAndExplicitness parent) => parent.$1.semanticsConfiguration.isMergingSemanticsOfDescendants);
     if (merges == _mergeIntoParent) {
       return;
     }
