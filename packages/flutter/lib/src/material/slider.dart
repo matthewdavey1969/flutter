@@ -784,7 +784,8 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
     SliderThemeData sliderTheme = SliderTheme.of(context);
     final SliderThemeData defaults = theme.useMaterial3
       ? _SliderDefaultsM3(context)
-      : _SliderDefaultsM2(context: context, sliderTheme: sliderTheme);
+      : _SliderDefaultsM2(context: context);
+
     // If the widget has active or inactive colors specified, then we plug them
     // in to the slider theme as best we can. If the developer wants more
     // control than that, then they need to use a SliderTheme. The default
@@ -849,7 +850,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       valueIndicatorShape: valueIndicatorShape,
       showValueIndicator: sliderTheme.showValueIndicator ?? defaultShowValueIndicator,
       valueIndicatorTextStyle: valueIndicatorTextStyle,
-      barThumbSize: sliderTheme.barThumbSize ?? defaults.barThumbSize,
+      thumbSize: sliderTheme.thumbSize ?? defaults.thumbSize,
       trackGapSize: sliderTheme.trackGapSize ?? defaults.trackGapSize,
     );
     final MouseCursor effectiveMouseCursor = MaterialStateProperty.resolveAs<MouseCursor?>(widget.mouseCursor, states)
@@ -1677,10 +1678,10 @@ class _RenderSlider extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
       overlayRect = Rect.fromCircle(center: thumbCenter, radius: overlaySize.width / 2.0);
     }
     final Offset? secondaryOffset = (secondaryVisualPosition != null) ? Offset(trackRect.left + secondaryVisualPosition * trackRect.width, trackRect.center.dy) : null;
-    double thumbWidth = _sliderTheme.barThumbSize!.resolve(<MaterialState>{})!.width;
-    final double thumbHeight = _sliderTheme.barThumbSize!.resolve(<MaterialState>{})!.height;
+    double thumbWidth = _sliderTheme.thumbSize!.resolve(<MaterialState>{})!.width;
+    final double thumbHeight = _sliderTheme.thumbSize!.resolve(<MaterialState>{})!.height;
     double trackGapSize = _sliderTheme.trackGapSize!;
-    final double pressedThumbWidth = _sliderTheme.barThumbSize!.resolve(<MaterialState>{ MaterialState.pressed })!.width;
+    final double pressedThumbWidth = _sliderTheme.thumbSize!.resolve(<MaterialState>{ MaterialState.pressed })!.width;
     final double delta = thumbWidth - pressedThumbWidth;
 
     if (_active) {
@@ -1781,7 +1782,7 @@ class _RenderSlider extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
       isDiscrete: isDiscrete,
       labelPainter: _labelPainter,
       parentBox: this,
-      sliderTheme: _sliderTheme.copyWith(barThumbSize: MaterialStatePropertyAll<Size>(Size(thumbWidth, thumbHeight))),
+      sliderTheme: _sliderTheme.copyWith(thumbSize: MaterialStatePropertyAll<Size>(Size(thumbWidth, thumbHeight))),
       textDirection: _textDirection,
       value: _value,
       textScaleFactor: textScaleFactor,
@@ -1952,14 +1953,13 @@ class _RenderValueIndicator extends RenderBox with RelayoutWhenSystemFontsChange
 }
 
 class _SliderDefaultsM2 extends SliderThemeData {
-  _SliderDefaultsM2({ required this.context, required SliderThemeData sliderTheme })
-    : _sliderTheme = sliderTheme,
-      super(trackHeight: 4.0);
+  _SliderDefaultsM2({ required this.context })
+     : super(trackHeight: 4.0);
 
   final BuildContext context;
   late final ThemeData theme = Theme.of(context);
   late final ColorScheme _colors = Theme.of(context).colorScheme;
-  final SliderThemeData _sliderTheme;
+  late final SliderThemeData sliderTheme = SliderTheme.of(context);
 
   @override
   Color? get activeTrackColor => _colors.primary;
@@ -2022,15 +2022,15 @@ class _SliderDefaultsM2 extends SliderThemeData {
 
   @override
   Color? get valueIndicatorColor {
-    if (_sliderTheme.valueIndicatorShape is RoundedRectSliderValueIndicatorShape) {
+    if (sliderTheme.valueIndicatorShape is RoundedRectSliderValueIndicatorShape) {
       return _colors.inverseSurface;
     }
     return _colors.primary;
   }
 
   @override
-  MaterialStateProperty<Size?>? get barThumbSize =>
-    MaterialStateProperty.resolveWith((Set<MaterialState> states) {
+  MaterialStateProperty<Size?>? get thumbSize {
+    return MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
         return const Size(4.0, 44.0);
       }
@@ -2045,6 +2045,7 @@ class _SliderDefaultsM2 extends SliderThemeData {
       }
       return const Size(4.0, 44.0);
     });
+  }
 
   @override
   double? get trackGapSize => 6.0;
@@ -2081,13 +2082,14 @@ class _SliderDefaultsM3 extends SliderThemeData {
   Color? get disabledInactiveTrackColor => _colors.onSurface.withOpacity(0.12);
 
   @override
-  Color? get disabledSecondaryActiveTrackColor => _colors.onSurface.withOpacity(0.38).withOpacity(0.12);
+  Color? get disabledSecondaryActiveTrackColor => _colors.onSurface.withOpacity(0.38);
 
   @override
   Color? get activeTickMarkColor => _colors.secondaryContainer;
 
   @override
   // TODO(tahatesser): Update this hard-coded value to use the correct token value.
+  // https://github.com/flutter/flutter/issues/153271
   Color? get inactiveTickMarkColor => _colors.primary;
 
   @override
@@ -2100,7 +2102,7 @@ class _SliderDefaultsM3 extends SliderThemeData {
   Color? get thumbColor => _colors.primary;
 
   @override
-  Color? get disabledThumbColor => _colors.onSurface.withOpacity(0.38).withOpacity(0.38);
+  Color? get disabledThumbColor => _colors.onSurface.withOpacity(0.38);
 
   @override
   Color? get overlayColor => MaterialStateColor.resolveWith((Set<MaterialState> states) {
@@ -2141,8 +2143,8 @@ class _SliderDefaultsM3 extends SliderThemeData {
   SliderTickMarkShape? get tickMarkShape => const RoundSliderTickMarkShape(tickMarkRadius: 4.0 / 2);
 
   @override
-  MaterialStateProperty<Size?>? get barThumbSize =>
-    MaterialStateProperty.resolveWith((Set<MaterialState> states) {
+  MaterialStateProperty<Size?>? get thumbSize {
+    return MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
         return const Size(4.0, 44.0);
       }
@@ -2157,9 +2159,9 @@ class _SliderDefaultsM3 extends SliderThemeData {
       }
       return const Size(4.0, 44.0);
     });
+  }
 
   @override
-  // TODO(tahatesser): Update this hard-coded value to use the token value when it is available.
   double? get trackGapSize => 6.0;
 }
 

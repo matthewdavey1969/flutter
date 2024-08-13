@@ -296,7 +296,7 @@ class SliderThemeData with Diagnosticable {
     this.thumbSelector,
     this.mouseCursor,
     this.allowedInteraction,
-    this.barThumbSize,
+    this.thumbSize,
     this.trackGapSize,
   });
 
@@ -595,13 +595,21 @@ class SliderThemeData with Diagnosticable {
   /// If [SliderThemeData.thumbShape] is [BarSliderThumbShape], this property is used to
   /// set the size of the thumb. Otherwise, the default thumb size is 4 pixels for the
   /// width and 44 pixels for the height.
-  final MaterialStateProperty<Size?>? barThumbSize;
+  final MaterialStateProperty<Size?>? thumbSize;
 
   /// The size of the gap between the active and inactive tracks of the [GappedSliderTrackShape].
   ///
   /// If [SliderThemeData.trackShape] is [GappedSliderTrackShape], this property
   /// is used to set the gap between the active and inactive tracks. Otherwise,
   /// the default gap size is 6 pixels.
+  ///
+  /// The Slider defaults to [GappedSliderTrackShape] when the track shape is
+  /// not specified, and the [trackGapSize] can be used to adjust the gap size.
+  ///
+  /// If the [ThemeData.useMaterial3] is false, then the Slider track shape
+  /// defaults to [RoundedRectSliderTrackShape] and the [trackGapSize] is ignored.
+  /// In this case, set the track shape to [GappedSliderTrackShape] to use the
+  /// [trackGapSize].
   final double? trackGapSize;
 
   /// Creates a copy of this object but with the given fields replaced with the
@@ -639,7 +647,7 @@ class SliderThemeData with Diagnosticable {
     RangeThumbSelector? thumbSelector,
     MaterialStateProperty<MouseCursor?>? mouseCursor,
     SliderInteraction? allowedInteraction,
-    MaterialStateProperty<Size?>? barThumbSize,
+    MaterialStateProperty<Size?>? thumbSize,
     double? trackGapSize,
   }) {
     return SliderThemeData(
@@ -675,7 +683,7 @@ class SliderThemeData with Diagnosticable {
       thumbSelector: thumbSelector ?? this.thumbSelector,
       mouseCursor: mouseCursor ?? this.mouseCursor,
       allowedInteraction: allowedInteraction ?? this.allowedInteraction,
-      barThumbSize: barThumbSize ?? this.barThumbSize,
+      thumbSize: thumbSize ?? this.thumbSize,
       trackGapSize: trackGapSize ?? this.trackGapSize,
     );
   }
@@ -720,7 +728,7 @@ class SliderThemeData with Diagnosticable {
       thumbSelector: t < 0.5 ? a.thumbSelector : b.thumbSelector,
       mouseCursor: t < 0.5 ? a.mouseCursor : b.mouseCursor,
       allowedInteraction: t < 0.5 ? a.allowedInteraction : b.allowedInteraction,
-      barThumbSize: MaterialStateProperty.lerp<Size?>(a.barThumbSize, b.barThumbSize, t, Size.lerp),
+      thumbSize: MaterialStateProperty.lerp<Size?>(a.thumbSize, b.thumbSize, t, Size.lerp),
       trackGapSize: lerpDouble(a.trackGapSize, b.trackGapSize, t),
     );
   }
@@ -759,7 +767,7 @@ class SliderThemeData with Diagnosticable {
       thumbSelector,
       mouseCursor,
       allowedInteraction,
-      barThumbSize,
+      thumbSize,
       trackGapSize,
     ),
   );
@@ -805,7 +813,7 @@ class SliderThemeData with Diagnosticable {
         && other.thumbSelector == thumbSelector
         && other.mouseCursor == mouseCursor
         && other.allowedInteraction == allowedInteraction
-        && other.barThumbSize == barThumbSize
+        && other.thumbSize == thumbSize
         && other.trackGapSize == trackGapSize;
   }
 
@@ -845,7 +853,7 @@ class SliderThemeData with Diagnosticable {
     properties.add(DiagnosticsProperty<RangeThumbSelector>('thumbSelector', thumbSelector, defaultValue: defaultData.thumbSelector));
     properties.add(DiagnosticsProperty<MaterialStateProperty<MouseCursor?>>('mouseCursor', mouseCursor, defaultValue: defaultData.mouseCursor));
     properties.add(EnumProperty<SliderInteraction>('allowedInteraction', allowedInteraction, defaultValue: defaultData.allowedInteraction));
-    properties.add(DiagnosticsProperty<MaterialStateProperty<Size?>>('barThumbSize', barThumbSize, defaultValue: defaultData.barThumbSize));
+    properties.add(DiagnosticsProperty<MaterialStateProperty<Size?>>('thumbSize', thumbSize, defaultValue: defaultData.thumbSize));
     properties.add(DoubleProperty('trackGapSize', trackGapSize, defaultValue: defaultData.trackGapSize));
   }
 }
@@ -3580,7 +3588,7 @@ class _DropSliderValueIndicatorPathPainter {
 ///
 /// The thumb bar shape width is reduced when the thumb is pressed.
 ///
-/// If [SliderThemeData.barThumbSize] is null, then the thumb size is 4 pixels for the width
+/// If [SliderThemeData.thumbSize] is null, then the thumb size is 4 pixels for the width
 /// and 44 pixels for the height.
 ///
 /// See also:
@@ -3614,7 +3622,7 @@ class BarSliderThumbShape extends SliderComponentShape {
   }) {
     assert(sliderTheme.disabledThumbColor != null);
     assert(sliderTheme.thumbColor != null);
-    assert(sliderTheme.barThumbSize != null);
+    assert(sliderTheme.thumbSize != null);
 
     final ColorTween colorTween = ColorTween(
       begin: sliderTheme.disabledThumbColor,
@@ -3623,14 +3631,14 @@ class BarSliderThumbShape extends SliderComponentShape {
     final Color color = colorTween.evaluate(enableAnimation)!;
 
     final Canvas canvas = context.canvas;
-    final Size thumbSize = sliderTheme.barThumbSize!.resolve(<MaterialState>{})!; // This is resolved in the paint method.
+    final Size thumbSize = sliderTheme.thumbSize!.resolve(<MaterialState>{})!; // This is resolved in the paint method.
     final RRect rrect = RRect.fromRectAndRadius(
       Rect.fromCenter(
         center: center,
         width: thumbSize.width,
         height: thumbSize.height,
       ),
-      Radius.circular(thumbSize.shortestSide /2),
+      Radius.circular(thumbSize.shortestSide / 2),
     );
     canvas.drawRRect(rrect, Paint()..color = color);
   }

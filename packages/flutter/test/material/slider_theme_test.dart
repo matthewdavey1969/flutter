@@ -63,7 +63,7 @@ void main() {
       valueIndicatorTextStyle: TextStyle(color: Colors.black),
       mouseCursor: MaterialStateMouseCursor.clickable,
       allowedInteraction: SliderInteraction.tapOnly,
-      barThumbSize: MaterialStatePropertyAll<Size>(Size(30, 10)),
+      thumbSize: MaterialStatePropertyAll<Size>(Size(30, 10)),
       trackGapSize: 10.0,
     ).debugFillProperties(builder);
 
@@ -103,7 +103,7 @@ void main() {
       'valueIndicatorTextStyle: TextStyle(inherit: true, color: Color(0xff000000))',
       'mouseCursor: WidgetStateMouseCursor(clickable)',
       'allowedInteraction: tapOnly',
-      'barThumbSize: WidgetStatePropertyAll(Size(30.0, 10.0))',
+      'thumbSize: WidgetStatePropertyAll(Size(30.0, 10.0))',
       'trackGapSize: 10.0',
     ]);
   });
@@ -1383,7 +1383,7 @@ void main() {
 
   testWidgets('The default slider thumb shape sizes can be overridden', (WidgetTester tester) async {
     final SliderThemeData sliderTheme = ThemeData().sliderTheme.copyWith(
-      barThumbSize: const MaterialStatePropertyAll<Size>(Size(30, 10)),
+      thumbSize: const MaterialStatePropertyAll<Size>(Size(30, 10)),
     );
 
     await tester.pumpWidget(_buildApp(sliderTheme, value: 0.25));
