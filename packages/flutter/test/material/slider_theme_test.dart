@@ -120,7 +120,7 @@ void main() {
     final Color thumbColor = Color(colorScheme.primary.value);
     final Color disabledThumbColor = colorScheme.onSurface.withOpacity(0.38);
     final Color activeTickMarkColor = colorScheme.secondaryContainer;
-    final Color inactiveTickMarkColor = colorScheme.primary;
+    final Color inactiveTickMarkColor = colorScheme.onSecondaryContainer;
     final Color disabledActiveTickMarkColor = colorScheme.onInverseSurface;
     final Color disabledInactiveTickMarkColor = colorScheme.onSurface;
     final Color stopIndicatorColor = colorScheme.primary;

@@ -44,7 +44,7 @@ class _${blockName}DefaultsM3 extends SliderThemeData {
   @override
   // TODO(tahatesser): Update this hard-coded value to use the correct token value.
   // https://github.com/flutter/flutter/issues/153271
-  Color? get inactiveTickMarkColor => _colors.primary;
+  Color? get inactiveTickMarkColor => _colors.onSecondaryContainer;
 
   @override
   Color? get disabledActiveTickMarkColor => _colors.${getToken("$tokenGroup.disabled.stop-indicator.color-selected")};

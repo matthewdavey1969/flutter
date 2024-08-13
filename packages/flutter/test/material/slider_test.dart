@@ -5183,7 +5183,7 @@ void main() {
     valueIndicatorBox = tester.renderObject(find.byType(Overlay));
     expect(
       valueIndicatorBox,
-      paints..scale()..path(color: theme.colorScheme.primary),
+      paints..scale()..rrect(color: theme.colorScheme.inverseSurface),
     );
 
     // Left arrow (decrease)
@@ -5197,7 +5197,7 @@ void main() {
     valueIndicatorBox = tester.renderObject(find.byType(Overlay));
     expect(
       valueIndicatorBox,
-      paints..scale()..path(color: theme.colorScheme.primary),
+      paints..scale()..rrect(color: theme.colorScheme.inverseSurface),
     );
 
     // Up arrow (increase)
@@ -5211,7 +5211,7 @@ void main() {
     valueIndicatorBox = tester.renderObject(find.byType(Overlay));
     expect(
       valueIndicatorBox,
-      paints..scale()..path(color: theme.colorScheme.primary),
+      paints..scale()..rrect(color: theme.colorScheme.inverseSurface),
     );
 
     // Down arrow (decrease)
@@ -5225,7 +5225,7 @@ void main() {
     valueIndicatorBox = tester.renderObject(find.byType(Overlay));
     expect(
       valueIndicatorBox,
-      paints..scale()..path(color: theme.colorScheme.primary),
+      paints..scale()..rrect(color: theme.colorScheme.inverseSurface),
     );
   }, variant: TargetPlatformVariant.desktop());
 
