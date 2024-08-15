@@ -5169,7 +5169,7 @@ void main() {
     RenderBox valueIndicatorBox = tester.renderObject(find.byType(Overlay));
     expect(
       valueIndicatorBox,
-      paints..scale()..path(color: theme.colorScheme.primary),
+      paints..scale()..rrect(color: theme.colorScheme.inverseSurface),
     );
 
     // Right arrow (increase)
@@ -5233,6 +5233,7 @@ void main() {
     double value = 0.5;
     final FocusNode focusNode = FocusNode();
     addTearDown(focusNode.dispose);
+    final ThemeData theme = ThemeData();
 
     Widget buildApp() {
       return MaterialApp(
@@ -5264,7 +5265,7 @@ void main() {
     RenderBox valueIndicatorBox = tester.renderObject(find.byType(Overlay));
     expect(
       valueIndicatorBox,
-      isNot(paints..path(color: const Color(0xff000000))..paragraph()),
+      isNot(paints..scale()..rrect(color: theme.colorScheme.inverseSurface)..paragraph()),
     );
 
     focusNode.requestFocus();
@@ -5275,7 +5276,7 @@ void main() {
     valueIndicatorBox = tester.renderObject(find.byType(Overlay));
     expect(
       valueIndicatorBox,
-      paints..path(color: const Color(0xff000000))..paragraph(),
+      paints..scale()..rrect(color: theme.colorScheme.inverseSurface)..paragraph(),
     );
   }, variant: TargetPlatformVariant.desktop());
 }
