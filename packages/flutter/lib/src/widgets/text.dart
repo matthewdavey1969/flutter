@@ -926,11 +926,16 @@ class _SelectableTextContainerDelegate extends MultiSelectableSelectionContainer
     SelectionResult? lastSelectionResult;
     bool foundStart = false;
     int? lastNextIndex;
+    late final SelectionEvent? maybeSynthesizedEvent;
+    if (event.type == SelectionEventType.selectParagraph) {
+      maybeSynthesizedEvent = SelectParagraphSelectionEvent(globalPosition: event.globalPosition, absorb: true);
+    } else if (event.type == SelectionEventType.selectLine) {
+      maybeSynthesizedEvent = SelectLineSelectionEvent(globalPosition: event.globalPosition, absorb: true);
+    }
     for (int index = 0; index < selectables.length; index += 1) {
       if (!paragraph.selectableBelongsToParagraph(selectables[index])) {
         if (foundStart) {
-          final SelectionEvent synthesizedEvent = SelectParagraphSelectionEvent(globalPosition: event.globalPosition, absorb: true);
-          final SelectionResult result = dispatchSelectionEventToChild(selectables[index], synthesizedEvent);
+          final SelectionResult result = dispatchSelectionEventToChild(selectables[index], maybeSynthesizedEvent!);
           if (selectables.length - 1 == index) {
             currentSelectionEndIndex = index;
             _flushInactiveSelections();
@@ -964,8 +969,7 @@ class _SelectableTextContainerDelegate extends MultiSelectableSelectionContainer
             startIndex = lastNextIndex == null && selectionAtStartOfSelectable ? 0 : index;
           }
           for (int i = startIndex; i < index; i += 1) {
-            final SelectionEvent synthesizedEvent = SelectParagraphSelectionEvent(globalPosition: event.globalPosition, absorb: true);
-            dispatchSelectionEventToChild(selectables[i], synthesizedEvent);
+            dispatchSelectionEventToChild(selectables[i], maybeSynthesizedEvent!);
           }
           currentSelectionStartIndex = startIndex;
           foundStart = true;
@@ -979,12 +983,11 @@ class _SelectableTextContainerDelegate extends MultiSelectableSelectionContainer
         if (!foundStart && lastNextIndex == null) {
           currentSelectionStartIndex = 0;
           for (int i = 0; i < index; i += 1) {
-            final SelectionEvent synthesizedEvent = SelectParagraphSelectionEvent(globalPosition: event.globalPosition, absorb: true);
-            dispatchSelectionEventToChild(selectables[i], synthesizedEvent);
+            dispatchSelectionEventToChild(selectables[i], maybeSynthesizedEvent!);
           }
         }
         currentSelectionEndIndex = index;
-        // Geometry has changed as a result of select paragraph, need to clear the
+        // Geometry has changed as a result of select boundary, need to clear the
         // selection of other selectables to keep selection in sync.
         _flushInactiveSelections();
       }
@@ -1328,7 +1331,7 @@ class _SelectableTextContainerDelegate extends MultiSelectableSelectionContainer
       _lastStartEdgeUpdateGlobalPosition = event.globalPosition;
     }
 
-    if (event.granularity == TextGranularity.paragraph) {
+    if (event.granularity == TextGranularity.paragraph || event.granularity == TextGranularity.line) {
       if (event.type == SelectionEventType.endEdgeUpdate) {
         return currentSelectionEndIndex == -1 ? _initSelection(event, isEnd: true) : _adjustSelection(event, isEnd: true);
       }
