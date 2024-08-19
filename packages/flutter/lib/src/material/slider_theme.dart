@@ -3591,6 +3591,9 @@ class _DropSliderValueIndicatorPathPainter {
 /// If [SliderThemeData.thumbSize] is null, then the thumb size is 4 pixels for the width
 /// and 44 pixels for the height.
 ///
+/// This is the default thumb shape for [Slider]. If [ThemeData.useMaterial3] is false,
+/// then the default thumb shape is [RoundSliderThumbShape].
+///
 /// See also:
 ///
 ///  * [Slider], which includes an overlay defined by this shape.
@@ -3659,6 +3662,9 @@ class BarSliderThumbShape extends SliderComponentShape {
 /// is also reduced.
 ///
 /// If [SliderThemeData.trackGapSize] is null, then the track gap size defaults to 6 pixels.
+///
+/// This is the default track shape for [Slider]. If [ThemeData.useMaterial3] is false,
+/// then the default track shape is [RoundedRectSliderTrackShape].
 ///
 /// See also:
 ///
@@ -3811,6 +3817,9 @@ class GappedSliderTrackShape extends SliderTrackShape with BaseSliderTrackShape 
 ///
 /// If the [SliderThemeData.valueIndicatorStrokeColor] is provided, then the value indicator is drawn with a
 /// stroke border with the color provided.
+///
+/// This is the default value indicator shape for [Slider]. If [ThemeData.useMaterial3] is false,
+/// then the default value indicator shape is [RectangularSliderValueIndicatorShape].
 ///
 /// See also:
 ///
