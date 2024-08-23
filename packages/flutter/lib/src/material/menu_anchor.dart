@@ -3748,18 +3748,7 @@ class _MenuButtonDefaultsM3 extends ButtonStyle {
 
   @override
   MaterialStateProperty<Color?>? get backgroundColor {
-    return MaterialStateProperty.resolveWith((Set<MaterialState> states) {
-      if (states.contains(MaterialState.pressed)) {
-        return _colors.secondaryContainer;
-      }
-      if (states.contains(MaterialState.hovered)) {
-        return _colors.secondaryContainer;
-      }
-      if (states.contains(MaterialState.focused)) {
-        return _colors.secondaryContainer;
-      }
-      return Colors.transparent;
-    });
+    return ButtonStyleButton.allOrNull<Color>(Colors.transparent);
   }
 
   // No default shadow color
