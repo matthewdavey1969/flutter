@@ -412,6 +412,66 @@ class SliverChildBuilderDelegate extends SliverChildDelegate {
   /// none of the children will ever try to keep themselves alive.
   ///
   /// Defaults to true.
+  ///
+  /// ## Sample code
+  ///
+  /// ```dart
+  /// import 'package:flutter/material.dart';
+  ///
+  /// void main() {
+  ///   runApp(MyApp());
+  /// }
+  ///
+  /// class MyApp extends StatelessWidget {
+  ///   @override
+  ///   Widget build(BuildContext context) {
+  ///     return MaterialApp(
+  ///       home: Scaffold(
+  ///         appBar: AppBar(title: Text('Keep Alive Example')),
+  ///         body: MyListView(),
+  ///       ),
+  ///     );
+  ///   }
+  /// }
+  ///
+  /// class MyListView extends StatelessWidget {
+  ///   @override
+  ///   Widget build(BuildContext context) {
+  ///     return ListView.builder(
+  ///       itemCount: 100,
+  ///       itemBuilder: (context, index) {
+  ///         return MyListItem(index: index);
+  ///       },
+  ///       // Set addAutomaticKeepAlives to true or false to see the difference
+  ///       addAutomaticKeepAlives: true, // Change this to false and see the impact
+  ///     );
+  ///   }
+  /// }
+  ///
+  /// class MyListItem extends StatefulWidget {
+  ///   final int index;
+  ///
+  ///   MyListItem({required this.index});
+  ///
+  ///   @override
+  ///   _MyListItemState createState() => _MyListItemState();
+  /// }
+  ///
+  /// class _MyListItemState extends State<MyListItem>
+  ///     with AutomaticKeepAliveClientMixin {
+  ///   @override
+  ///   bool get wantKeepAlive => true;
+  ///
+  ///   @override
+  ///   Widget build(BuildContext context) {
+  ///     super.build(context);
+  ///     return ListTile(
+  ///       title: Text('Item ${widget.index}'),
+  ///     );
+  ///   }
+  /// }
+  /// ```
+  ///
   /// {@endtemplate}
   final bool addAutomaticKeepAlives;
 
