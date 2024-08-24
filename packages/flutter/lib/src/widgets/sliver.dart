@@ -1427,17 +1427,78 @@ class _SliverOffstageElement extends SingleChildRenderObjectElement {
 ///
 /// 1. Direct usage:
 /// {@tool snippet}
+/// This example demonstrates how to use [KeepAlive] directly in a [ListView].
+/// Even-indexed items are kept alive, while odd-indexed items are disposed when scrolled out of view.
+///
 /// ```dart
-/// ListView.builder(
-///   itemBuilder: (BuildContext context, int index) {
-///     return KeepAlive(
-///       keepAlive: index % 2 == 0, // Keep even-indexed items alive
-///       child: ListTile(title: Text('Item $index')),
+/// import 'package:flutter/material.dart';
+///
+/// void main() {
+///   runApp(const MyApp());
+/// }
+///
+/// class MyApp extends StatelessWidget {
+///   const MyApp({Key? key}) : super(key: key);
+///
+///   @override
+///   Widget build(BuildContext context) {
+///     return MaterialApp(
+///       home: Scaffold(
+///         appBar: AppBar(title: const Text('KeepAlive Example')),
+///         body: ListView.builder(
+///           itemCount: 100,
+///           itemBuilder: (BuildContext context, int index) {
+///             return KeepAlive(
+///               keepAlive: index % 2 == 0,
+///               child: ListItem(index: index),
+///             );
+///           },
+///         ),
+///       ),
 ///     );
-///   },
-/// )
+///   }
+/// }
+///
+/// class ListItem extends StatefulWidget {
+///   const ListItem({Key? key, required this.index}) : super(key: key);
+///
+///   final int index;
+///
+///   @override
+///   State<ListItem> createState() => _ListItemState();
+/// }
+///
+/// class _ListItemState extends State<ListItem> {
+///   late final String label;
+///
+///   @override
+///   void initState() {
+///     super.initState();
+///     label = 'Item ${widget.index} (${widget.index % 2 == 0 ? 'kept alive' : 'can be disposed'})';
+///     print('Created: $label');
+///   }
+///
+///   @override
+///   void dispose() {
+///     print('Disposed: $label');
+///     super.dispose();
+///   }
+///
+///   @override
+///   Widget build(BuildContext context) {
+///     return ListTile(
+///       title: Text(label),
+///       tileColor: widget.index % 2 == 0 ? Colors.lightBlue[50] : null,
+///     );
+///   }
+/// }
 /// ```
+///
+/// In this example, you can scroll the list and observe in the console output:
+/// - Even-indexed items (blue background) are created once and never disposed.
+/// - Odd-indexed items are created when scrolled into view and disposed when scrolled out of view.
 /// {@end-tool}
+///
 /// This approach allows for more control over which items are kept alive and
 /// promotes better separation of concerns, as the decision to keep an item
 /// alive is made by the parent widget rather than the item itself.
