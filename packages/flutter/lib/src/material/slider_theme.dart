@@ -590,9 +590,9 @@ class SliderThemeData with Diagnosticable {
   /// If specified, overrides the default value of [Slider.allowedInteraction].
   final SliderInteraction? allowedInteraction;
 
-  /// The size of the [BarSliderThumbShape] thumb.
+  /// The size of the [HandleThumbShape] thumb.
   ///
-  /// If [SliderThemeData.thumbShape] is [BarSliderThumbShape], this property is used to
+  /// If [SliderThemeData.thumbShape] is [HandleThumbShape], this property is used to
   /// set the size of the thumb. Otherwise, the default thumb size is 4 pixels for the
   /// width and 44 pixels for the height.
   final MaterialStateProperty<Size?>? thumbSize;
@@ -3599,9 +3599,9 @@ class _DropSliderValueIndicatorPathPainter {
 ///  * [Slider], which includes an overlay defined by this shape.
 ///  * [SliderTheme], which can be used to configure the overlay shape of all
 ///    sliders in a widget subtree.
-class BarSliderThumbShape extends SliderComponentShape {
+class HandleThumbShape extends SliderComponentShape {
   /// Create a slider thumb that draws a bar.
-  const BarSliderThumbShape();
+  const HandleThumbShape();
 
   @override
   Size getPreferredSize(bool isEnabled, bool isDiscrete) {
@@ -3657,7 +3657,7 @@ class BarSliderThumbShape extends SliderComponentShape {
 /// of 2 pixels for the inside corners.
 ///
 /// Between the active and inactive tracks there is a gap of size [SliderThemeData.trackGapSize].
-/// If the [SliderThemeData.thumbShape] is [BarSliderThumbShape] and the thumb is pressed, the thumb's
+/// If the [SliderThemeData.thumbShape] is [HandleThumbShape] and the thumb is pressed, the thumb's
 /// width is reduced; as a result, the track gap size in [GappedSliderTrackShape]
 /// is also reduced.
 ///

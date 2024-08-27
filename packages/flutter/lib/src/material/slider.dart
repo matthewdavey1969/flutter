@@ -2131,7 +2131,7 @@ class _SliderDefaultsM3 extends SliderThemeData {
   SliderComponentShape? get valueIndicatorShape => const RoundedRectSliderValueIndicatorShape();
 
   @override
-  SliderComponentShape? get thumbShape => const BarSliderThumbShape();
+  SliderComponentShape? get thumbShape => const HandleThumbShape();
 
   @override
   SliderTrackShape? get trackShape => const GappedSliderTrackShape();
