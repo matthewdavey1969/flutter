@@ -2163,7 +2163,8 @@ class _InputDecoratorState extends State<InputDecorator> with TickerProviderStat
 
     final TextStyle hintStyle = _getInlineHintStyle(themeData, defaults);
     final String? hintText = decoration.hintText;
-    final Widget? hint = hintText == null ? null : AnimatedOpacity(
+    final bool adjustHeightForHintOnInput = !isEmpty && decoration.adjustHeightForHintOnInput;
+    final Widget? hint = (adjustHeightForHintOnInput || hintText == null) ? null : AnimatedOpacity(
       opacity: (isEmpty && !_hasInlineLabel) ? 1.0 : 0.0,
       duration: decoration.hintFadeDuration ?? _kHintFadeTransitionDuration,
       curve: _kTransitionCurve,
@@ -2612,6 +2613,7 @@ class InputDecoration {
     this.semanticCounterText,
     this.alignLabelWithHint,
     this.constraints,
+    this.adjustHeightForHintOnInput = false,
   }) : assert(!(label != null && labelText != null), 'Declaring both label and labelText is not supported.'),
        assert(!(helper != null && helperText != null), 'Declaring both helper and helperText is not supported.'),
        assert(!(prefix != null && prefixText != null), 'Declaring both prefix and prefixText is not supported.'),
@@ -2650,6 +2652,7 @@ class InputDecoration {
     this.border = InputBorder.none,
     this.enabled = true,
     this.constraints,
+    this.adjustHeightForHintOnInput = false,
   }) : icon = null,
        iconColor = null,
        label = null,
@@ -3560,6 +3563,11 @@ class InputDecoration {
   /// a default height based on text size.
   final BoxConstraints? constraints;
 
+  /// Whether the hint text should be adapt its height when the user enters text.
+  ///
+  /// Defaults to false.
+  final bool adjustHeightForHintOnInput;
+
   /// Creates a copy of this input decoration with the given fields replaced
   /// by the new values.
   InputDecoration copyWith({
@@ -3616,6 +3624,7 @@ class InputDecoration {
     String? semanticCounterText,
     bool? alignLabelWithHint,
     BoxConstraints? constraints,
+    bool? adjustHeightForHintOnInput,
   }) {
     return InputDecoration(
       icon: icon ?? this.icon,
@@ -3671,6 +3680,7 @@ class InputDecoration {
       semanticCounterText: semanticCounterText ?? this.semanticCounterText,
       alignLabelWithHint: alignLabelWithHint ?? this.alignLabelWithHint,
       constraints: constraints ?? this.constraints,
+      adjustHeightForHintOnInput: adjustHeightForHintOnInput ?? this.adjustHeightForHintOnInput,
     );
   }
 
@@ -3778,7 +3788,8 @@ class InputDecoration {
         && other.enabled == enabled
         && other.semanticCounterText == semanticCounterText
         && other.alignLabelWithHint == alignLabelWithHint
-        && other.constraints == constraints;
+        && other.constraints == constraints
+        && other.adjustHeightForHintOnInput == adjustHeightForHintOnInput;
   }
 
   @override
@@ -3837,6 +3848,7 @@ class InputDecoration {
       semanticCounterText,
       alignLabelWithHint,
       constraints,
+      adjustHeightForHintOnInput,
     ];
     return Object.hashAll(values);
   }
@@ -3893,6 +3905,7 @@ class InputDecoration {
       if (semanticCounterText != null) 'semanticCounterText: $semanticCounterText',
       if (alignLabelWithHint != null) 'alignLabelWithHint: $alignLabelWithHint',
       if (constraints != null) 'constraints: $constraints',
+      if (adjustHeightForHintOnInput) 'adjustHeightForHintOnInput: true',
     ];
     return 'InputDecoration(${description.join(', ')})';
   }

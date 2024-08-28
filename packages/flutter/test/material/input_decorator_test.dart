@@ -4505,6 +4505,21 @@ void main() {
       final Text hintTextWidget = tester.widget(hintTextFinder);
       expect(hintTextWidget.style!.overflow, decoration.hintStyle!.overflow);
     });
+
+    testWidgets('hint should be adapt its height when there is input text', (WidgetTester tester) async {
+      final String hintText = 'hint text' * 20;
+      final InputDecoration decoration = InputDecoration(
+        hintText: hintText,
+        adjustHeightForHintOnInput: true,
+      );
+
+      await tester.pumpWidget(
+        buildInputDecorator(
+          decoration: decoration,
+        ),
+      );
+      expect(find.text(hintText), findsNothing);
+    });
   });
 
   group('Material3 - InputDecoration helper/counter/error', () {
