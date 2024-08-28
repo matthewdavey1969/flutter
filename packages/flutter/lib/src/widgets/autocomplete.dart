@@ -353,10 +353,27 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
     }
   }
 
+  // Assigning an ID to every call of _onChangedField is necessary to avoid a
+  // situation where _options is updated by an older call when multiple
+  // _onChangedField calls are running simultaneously.
+  int _onChangedCallId = 0;
   // Called when _textEditingController changes.
   Future<void> _onChangedField() async {
     final TextEditingValue value = _textEditingController.value;
+
+    // Makes sure that options change only when content of the field changes.
+    if (value.text == _lastFieldText) {
+      return;
+    }
+    _lastFieldText = value.text;
+    _onChangedCallId += 1;
+    final int callId = _onChangedCallId;
     final Iterable<T> options = await widget.optionsBuilder(value);
+
+    // Makes sure that previous call results do not replace new ones.
+    if (callId != _onChangedCallId) {
+      return;
+    }
     _options = options;
     _updateHighlight(_highlightedOptionIndex.value);
     final T? selection = _selection;
@@ -366,10 +383,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
 
     // Make sure the options are no longer hidden if the content of the field
     // changes (ignore selection changes).
-    if (value.text != _lastFieldText) {
-      _lastFieldText = value.text;
-      _updateOptionsViewVisibility();
-    }
+    _updateOptionsViewVisibility();
   }
 
   // Called from fieldViewBuilder when the user submits the field.
