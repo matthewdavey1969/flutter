@@ -1078,7 +1078,7 @@ class _ModalScopeState<T> extends State<_ModalScope<T>> {
                         child: ListenableBuilder(
                           listenable: _listenable, // immutable
                           builder: (BuildContext context, Widget? child) {
-                            return widget.route.buildTransitions(
+                            return widget.route.buildFlexTransitions(
                               context,
                               widget.route.animation!,
                               widget.route.secondaryAnimation!,
@@ -1415,6 +1415,79 @@ abstract class ModalRoute<T> extends TransitionRoute<T> with LocalHistoryRoute<T
     Widget child,
   ) {
     return child;
+  }
+
+  /// The delegated transition provided to the previous route.
+  DelegatedTransition? get delegatedTransition => null;
+
+  /// The delegated transition received from an incoming route.
+  DelegatedTransition? receivedTransition;
+
+  /// Transition that matches with the next route. Will be null if there is no
+  /// next route or a next route is not provided. If a non-null value exists,
+  /// then it will be used in place of [buildTransitions].
+  DelegatedTransition? get nextRouteTransition {
+    if (receivedTransition != null) {
+      return receivedTransition;
+    } else {
+      return null;
+    }
+  }
+
+  /// A method to trigger setting the [delegatedTransition] for a route.
+  ///
+  /// It is possible for a route to supply a different [delegatedTransition]
+  /// depending on the context of the tree at its location. For example Material's
+  /// [ZoomPageTransitionsBuilder] depends on the [Theme] to conditionally provide
+  /// a non-snapshotted [delegatedTransition]. In some cases, the previous route
+  /// may ask for the [delegatedTransition] of a route before it is built.
+  ///
+  /// In these cases, the previous route will call [setDelegatedTransition] on
+  /// on the unbuilt route using its own [BuildContext]. Override this method to
+  /// set the [delegatedTransition] based on the provided [BuildContext]. This
+  /// context will be from the PREVIOUS route, so do not use logic that requires
+  /// the [BuildContext] of the current route.
+  void setDelegatedTransition(BuildContext context) {}
+
+  /// Wraps the transitions of the route with a delegated transition received
+  /// from a route being pushed on top of the current route.
+  ///
+  /// This allows the current route to sync its exit transition with the
+  /// entrance transition of the incoming route.
+  ///
+  /// {@tool dartpad}
+  /// This sample shows an app that uses three different page transitions, a
+  /// Material Zoom transition, the standard Cupertino sliding transition, and a
+  /// custom vertical transition. All of the page routes are able to inform the
+  /// previous page how to transition off the screen to sync with the new page.
+  ///
+  /// ** See code in examples/api/lib/widgets/routes/flexible_route_transitions.0.dart **
+  /// {@end-tool}
+  ///
+  /// {@tool dartpad}
+  /// This sample shows an app that uses the same transitions as the previous
+  /// sample, this time in a [MaterialApp.router].
+  ///
+  /// ** See code in examples/api/lib/widgets/routes/flexible_route_transitions.1.dart **
+  /// {@end-tool}
+  Widget buildFlexTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final ProxyAnimation proxyAnimation = ProxyAnimation();
+
+    final Animation<double> flexAnimation = (nextRouteTransition == null) ?
+      secondaryAnimation : proxyAnimation;
+
+    final Widget originalTransitions = buildTransitions(context, animation, flexAnimation, child);
+
+    if (nextRouteTransition != null) {
+      return nextRouteTransition!(context, animation, secondaryAnimation, originalTransitions);
+    } else {
+      return originalTransitions;
+    }
   }
 
   @override
@@ -1933,12 +2006,29 @@ abstract class ModalRoute<T> extends TransitionRoute<T> with LocalHistoryRoute<T
 
   @override
   void didChangeNext(Route<dynamic>? nextRoute) {
+    if (nextRoute is ModalRoute<T> && nextRoute.delegatedTransition == null && nextRoute.subtreeContext == null && this.subtreeContext != null) {
+      nextRoute.setDelegatedTransition(this.subtreeContext!);
+    }
+    if (nextRoute is ModalRoute<T> && canTransitionTo(nextRoute) && nextRoute.delegatedTransition != this.delegatedTransition) {
+      if (receivedTransition != nextRoute.delegatedTransition) {
+        receivedTransition = nextRoute.delegatedTransition;
+      }
+    } else {
+      receivedTransition = null;
+    }
     super.didChangeNext(nextRoute);
     changedInternalState();
   }
 
   @override
   void didPopNext(Route<dynamic> nextRoute) {
+    if (nextRoute is ModalRoute<T> && canTransitionTo(nextRoute) && nextRoute.delegatedTransition != this.delegatedTransition) {
+      if (receivedTransition != nextRoute.delegatedTransition) {
+        receivedTransition = nextRoute.delegatedTransition;
+      }
+    } else {
+      receivedTransition = null;
+    }
     super.didPopNext(nextRoute);
     changedInternalState();
     _maybeDispatchNavigationNotification();
