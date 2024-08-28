@@ -766,7 +766,7 @@ class _SelectableTextContainer extends StatefulWidget {
     required this.selectionColor,
   });
 
-  final InlineSpan text;
+  final TextSpan text;
   final TextAlign textAlign;
   final TextDirection? textDirection;
   final bool softWrap;
@@ -883,9 +883,7 @@ class _RichText extends StatelessWidget {
 const double _kSelectableVerticalComparingThreshold = 3.0;
 
 class _SelectableTextContainerDelegate extends MultiSelectableSelectionContainerDelegate {
-  _SelectableTextContainerDelegate(
-    GlobalKey textKey,
-  ) : _textKey = textKey;
+  _SelectableTextContainerDelegate(GlobalKey textKey) : _textKey = textKey;
 
   final GlobalKey _textKey;
   RenderParagraph get paragraph => _textKey.currentContext!.findRenderObject()! as RenderParagraph;
@@ -1360,6 +1358,7 @@ class _SelectableTextContainerDelegate extends MultiSelectableSelectionContainer
       case SelectionEventType.clear:
         _hasReceivedStartEvent.remove(selectable);
         _hasReceivedEndEvent.remove(selectable);
+      case SelectionEventType.selectionFinalized:
       case SelectionEventType.selectAll:
       case SelectionEventType.selectWord:
       case SelectionEventType.selectParagraph:

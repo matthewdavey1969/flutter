@@ -463,6 +463,9 @@ class RenderParagraph extends RenderBox with ContainerRenderObjectMixin<RenderBo
 
   /// Determines whether the given [Selectable] was created by this
   /// [RenderParagraph].
+  ///
+  /// The [RenderParagraph] splits its text into multiple [Selectable]s,
+  /// delimited by [PlaceholderSpan.placeholderCodeUnit].
   bool selectableBelongsToParagraph(Selectable selectable) {
     if (_lastSelectableFragments == null) {
       return false;
@@ -1455,6 +1458,8 @@ class _SelectableFragment with Selectable, Diagnosticable, ChangeNotifier implem
           directionallyExtendSelection.isEnd,
           directionallyExtendSelection.direction,
         );
+      case SelectionEventType.selectionFinalized:
+        result = SelectionResult.none;
     }
 
     if (existingSelectionStart != _textSelectionStart ||
@@ -1474,6 +1479,21 @@ class _SelectableFragment with Selectable, Diagnosticable, ChangeNotifier implem
     return SelectedContent(
       plainText: fullText.substring(start, end),
     );
+  }
+
+  @override
+  List<SelectedContentRange> getSelections() {
+    final int contentLength = (range.end - range.start).abs();
+    if (_textSelectionStart == null || _textSelectionEnd == null) {
+      return <SelectedContentRange>[SelectedContentRange.empty(contentLength: contentLength)];
+    }
+    final SelectedContentRange localSelectedContentRange = SelectedContentRange(
+      contentLength: contentLength,
+      contentStart: range.start,
+      startOffset: _textSelectionStart!.offset,
+      endOffset: _textSelectionEnd!.offset,
+    );
+    return <SelectedContentRange>[localSelectedContentRange];
   }
 
   void _didChangeSelection() {

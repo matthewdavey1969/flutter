@@ -90,6 +90,19 @@ abstract class SelectionHandler implements ValueListenable<SelectionGeometry> {
   /// Return `null` if nothing is selected.
   SelectedContent? getSelectedContent();
 
+  /// Gets the list of selections in this object.
+  ///
+  /// The order of this list follows the same
+  /// order as the [Selectable]s contained under
+  /// this [SelectionHandler].
+  ///
+  /// Returns a list of [SelectedContentRange.empty]
+  /// when nothing is selected.
+  ///
+  /// Returns an empty list only if there is no
+  /// content under this [SelectionHandler].
+  List<SelectedContentRange> getSelections();
+
   /// Handles the [SelectionEvent] sent to this object.
   ///
   /// The subclasses need to update their selections or delegate the
@@ -104,17 +117,139 @@ abstract class SelectionHandler implements ValueListenable<SelectionGeometry> {
   SelectionResult dispatchSelectionEvent(SelectionEvent event);
 }
 
+/// This class stores the information of the selection under
+/// a [Selectable] or [SelectionHandler].
+///
+/// The [SelectedContentRange]s for a given [Selectable] or
+/// [SelectionHandler] can be retrieved by calling
+/// [SelectionHandler.getSelections].
+@immutable
+class SelectedContentRange {
+  /// Creates a [SelectedContentRange] with the given values.
+  const SelectedContentRange({
+    required this.contentLength,
+    required this.contentStart,
+    required this.startOffset,
+    required this.endOffset,
+  });
+
+  /// A selected content range that contains nothing.
+  static SelectedContentRange empty({int? contentLength}) {
+    return SelectedContentRange(
+      startOffset: -1,
+      endOffset: -1,
+      contentStart: -1,
+      contentLength: contentLength ?? -1,
+    );
+  }
+
+  /// The length of the content.
+  ///
+  /// The absolute value of the difference between the start
+  /// offset and end offset contained by this [SelectedContentRange]
+  /// must not exceed the content length.
+  final int contentLength;
+
+  /// The offset where the content begins.
+  final int contentStart;
+
+  /// The start of the selection relative to the start of the content.
+  ///
+  /// {@template flutter.rendering.selection.SelectedContentRange.selectionOffsets}
+  /// For example a [Text] widget's content is in the format
+  /// of an [InlineSpan] tree.
+  ///
+  /// Take the [Text] widget and [TextSpan] tree below:
+  ///
+  /// {@tool snippet}
+  /// ```dart
+  /// const Text.rich(
+  ///   TextSpan(
+  ///     text: 'Hello world, ',
+  ///     children: <InlineSpan>[
+  ///       WidgetSpan(
+  ///         child: Text('how are you today?'),
+  ///       ),
+  ///     ],
+  ///   ),
+  /// )
+  /// ```
+  /// {@end-tool}
+  ///
+  /// If we select from the beginning of 'world' to the
+  /// end of the '?' in the [WidgetSpan], we will receive
+  /// two [SelectedContentRange]s from [SelectionHandler.getSelections].
+  /// The first range will be relative to the root text
+  /// of the [TextSpan], the [startOffset] will be 6,
+  /// and [endOffset] will be 13. The second range
+  /// will be relative to the content inside the
+  /// [WidgetSpan], the [startOffset] will be 0,
+  /// and [endOffset] will be 18.
+  /// {@endtemplate}
+  final int startOffset;
+
+  /// The end of the selection relative to the end of the content.
+  ///
+  /// {@macro flutter.rendering.selection.SelectedContentRange.selectionOffsets}
+  final int endOffset;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other.runtimeType != runtimeType) {
+      return false;
+    }
+    return other is SelectedContentRange
+        && other.contentLength == contentLength
+        && other.contentStart == contentStart
+        && other.startOffset == startOffset
+        && other.endOffset == endOffset;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      contentLength,
+      contentStart,
+      startOffset,
+      endOffset,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'SelectedContentRange(\n'
+           '  contentLength: $contentLength,\n'
+           '  contentStart: $contentStart, \n'
+           '  startOffset: $startOffset,\n'
+           '  endOffset: $endOffset,\n'
+           ')';
+  }
+}
+
 /// The selected content in a [Selectable] or [SelectionHandler].
 // TODO(chunhtai): Add more support for rich content.
 // https://github.com/flutter/flutter/issues/104206.
+@immutable
 class SelectedContent {
   /// Creates a selected content object.
   ///
   /// Only supports plain text.
-  const SelectedContent({required this.plainText});
+  const SelectedContent({
+    required this.plainText,
+  });
 
   /// The selected content in plain text format.
   final String plainText;
+
+  @override
+  String toString() {
+    return 'SelectedContent(\n'
+           '  plainText: $plainText,\n'
+           ')';
+  }
 }
 
 /// A mixin that can be selected by users when under a [SelectionArea] widget.
@@ -287,6 +422,11 @@ enum SelectionEventType {
   /// Used by [SelectionEdgeUpdateEvent].
   endEdgeUpdate,
 
+  /// An event to indicate the selection is finalized.
+  ///
+  /// Used by [SelectionFinalizedSelectionEvent].
+  selectionFinalized,
+
   /// An event to clear the current selection.
   ///
   /// Used by [ClearSelectionEvent].
@@ -354,6 +494,18 @@ abstract class SelectionEvent {
 
   /// The type of this selection event.
   final SelectionEventType type;
+}
+
+
+/// Indicates that the selection is finalized.
+///
+/// This event can be sent as the result of a mouse drag end, touch
+/// long press drag end, a single click to collapse the selection, a
+/// double click/tap to select a word, ctrl + A / cmd + A to select all,
+/// or a triple click/tap to select a paragraph.
+class SelectionFinalizedSelectionEvent extends SelectionEvent {
+  /// Creates a selection finalized selection event.
+  const SelectionFinalizedSelectionEvent(): super._(SelectionEventType.selectionFinalized);
 }
 
 /// Selects all selectable contents.
@@ -619,6 +771,82 @@ enum SelectionStatus {
   none,
 }
 
+/// The details of a selection.
+///
+/// This object is created by callers of the [SelectionListenerSelectionChangedCallback] callback.
+///
+/// This includes information such as the status of the selection
+/// indicating if it is collapsed or uncollapsed, the start and end offsets
+/// of the selection local to the [SelectionListener] that reports this object,
+/// and whether the selection is ongoing.
+///
+/// See also:
+///
+///   * [SelectionListener], which provides a [SelectionDetails] object
+///     for the selection under its subtree in its [SelectionListener.onSelectionChanged]
+///     callback.
+@immutable
+class SelectionDetails {
+  /// Creates a selection details object.
+  const SelectionDetails({
+    required this.status,
+    required this.selectionFinalized,
+    required this.globalStartOffset,
+    required this.globalEndOffset,
+  });
+
+  /// The status of ongoing selection under the [Selectable]
+  /// or [SelectionHandler] that created this object.
+  final SelectionStatus status;
+
+  /// Whether the selection is ongoing.
+  ///
+  /// Returns false if the selection is ongoing and
+  /// true if the selection is finalized.
+  final bool selectionFinalized;
+
+  /// The global start offset.
+  final int globalStartOffset;
+
+  /// The global end offset.
+  final int globalEndOffset;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other.runtimeType != runtimeType) {
+      return false;
+    }
+    return other is SelectionDetails
+        && other.status == status
+        && other.selectionFinalized == selectionFinalized
+        && other.globalStartOffset == globalStartOffset
+        && other.globalEndOffset == globalEndOffset;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      status,
+      selectionFinalized,
+      globalStartOffset,
+      globalEndOffset,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'SelectionDetails(\n'
+           '  status: $status,\n'
+           '  selectionFinalized: $selectionFinalized,\n'
+           '  globalStartOffset: $globalStartOffset\n'
+           '  globalEndOffset: $globalEndOffset,\n'
+           ')';
+  }
+}
+
 /// The geometry of the current selection.
 ///
 /// This includes details such as the locations of the selection start and end,
@@ -727,6 +955,17 @@ class SelectionGeometry {
       status,
       hasContent,
     );
+  }
+
+  @override
+  String toString() {
+    return 'SelectionGeometry(\n'
+           '  startSelectionPoint: $startSelectionPoint,\n'
+           '  endSelectionPoint: $endSelectionPoint,\n'
+           '  selectionRects: $selectionRects,\n'
+           '  status: $status,\n'
+           '  hasContent: $hasContent,\n'
+           ')';
   }
 }
 
