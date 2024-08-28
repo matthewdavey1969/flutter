@@ -26,6 +26,34 @@ import 'sliver.dart';
 /// [KeepAliveNotification.handle].
 ///
 /// To send these notifications, consider using [AutomaticKeepAliveClientMixin].
+///
+/// ## Sample code
+///
+/// ```dart
+/// class MyWidget extends StatefulWidget {
+///   @override
+///   _MyWidgetState createState() => _MyWidgetState();
+/// }
+///
+/// class _MyWidgetState extends State<MyWidget> with AutomaticKeepAliveClientMixin<MyWidget> {
+///   @override
+///   bool get wantKeepAlive => true;
+///
+///   @override
+///   Widget build(BuildContext context) {
+///     super.build(context); // This is important when using AutomaticKeepAliveClientMixin
+///     return ListView.builder(
+///       itemCount: 100,
+///       itemBuilder: (context, index) {
+///         return Text('Item $index');
+///       },
+///     );
+///   }
+/// }
+/// ```
+///
+/// In this example, The widget will remain alive in the list view even when it is off-screen.
+///
 class AutomaticKeepAlive extends StatefulWidget {
   /// Creates a widget that listens to [KeepAliveNotification]s and maintains a
   /// [KeepAlive] widget appropriately.
@@ -337,6 +365,54 @@ class KeepAliveHandle extends ChangeNotifier {
 ///
 /// Then, whenever [wantKeepAlive]'s value changes (or might change), the
 /// subclass should call [updateKeepAlive].
+///
+///
+/// {@tool snippet}
+///
+/// This example shows a typical implementation of a widget that uses
+/// [AutomaticKeepAliveClientMixin]:
+///
+/// ```dart
+/// class MyWidget extends StatefulWidget {
+///   const MyWidget({Key? key}) : super(key: key);
+///
+///   @override
+///   _MyWidgetState createState() => _MyWidgetState();
+/// }
+///
+/// class _MyWidgetState extends State<MyWidget>
+///     with AutomaticKeepAliveClientMixin<MyWidget> {
+///   bool _keepAlive = false;
+///
+///   @override
+///   Widget build(BuildContext context) {
+///     super.build(context); // This line is important!
+///     return Column(
+///       children: <Widget>[
+///         Text('Keep me alive: $_keepAlive'),
+///         ElevatedButton(
+///           child: Text('Toggle'),
+///           onPressed: () {
+///             setState(() {
+///               _keepAlive = !_keepAlive;
+///               updateKeepAlive();
+///             });
+///           },
+///         ),
+///       ],
+///     );
+///   }
+///
+///   @override
+///   bool get wantKeepAlive => _keepAlive;
+/// }
+/// ```
+///
+/// Note how `super.build(context)` is called in the `build` method, and
+/// `updateKeepAlive()` is called whenever `wantKeepAlive` might have changed.
+/// Also note the use of `AutomaticKeepAliveClientMixin<MyWidget>` to specify
+/// the type argument `T`.
+/// {@end-tool}
 ///
 /// The type argument `T` is the type of the [StatefulWidget] subclass of the
 /// [State] into which this class is being mixed.
