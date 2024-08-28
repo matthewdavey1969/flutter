@@ -16,13 +16,17 @@ import 'package:flutter/widgets.dart';
 import 'colors.dart';
 
 // Extracted from https://developer.apple.com/design/resources/.
+// Default values have been updated to match iOS 17 figma file: https://www.figma.com/community/file/1248375255495415511.
 
 // Minimum padding from edges of the segmented control to edges of
 // encompassing widget.
 const EdgeInsetsGeometry _kHorizontalItemPadding = EdgeInsets.symmetric(vertical: 2, horizontal: 3);
 
+// The corner radius of the segmented control.
+const Radius _kCornerRadius = Radius.circular(9);
+
 // The corner radius of the thumb.
-const Radius _kThumbRadius = Radius.circular(6.93);
+const Radius _kThumbRadius = Radius.circular(7);
 // The amount of space by which to expand the thumb from the size of the currently
 // selected child.
 const EdgeInsets _kThumbInsets = EdgeInsets.symmetric(horizontal: 1);
@@ -38,9 +42,9 @@ const CupertinoDynamicColor _kThumbColor = CupertinoDynamicColor.withBrightness(
 );
 
 // The amount of space by which to inset each separator.
-const EdgeInsets _kSeparatorInset = EdgeInsets.symmetric(vertical: 6);
+const EdgeInsets _kSeparatorInset = EdgeInsets.symmetric(vertical: 5);
 const double _kSeparatorWidth = 1;
-const Radius _kSeparatorRadius = Radius.circular(_kSeparatorWidth/2);
+const Radius _kSeparatorRadius = Radius.circular(_kSeparatorWidth / 2);
 
 // The minimum scale factor of the thumb, when being pressed on for a sufficient
 // amount of time.
@@ -48,7 +52,7 @@ const double _kMinThumbScale = 0.95;
 
 // The minimum horizontal distance between the edges of the separator and the
 // closest child.
-const double _kSegmentMinPadding = 9.25;
+const double _kSegmentMinPadding = 10;
 
 // The threshold value used in hasDraggedTooFar, for checking against the square
 // L2 distance from the location of the current drag pointer, to the closest
@@ -57,16 +61,23 @@ const double _kSegmentMinPadding = 9.25;
 // Both the mechanism and the value are speculated.
 const double _kTouchYDistanceThreshold = 50.0 * 50.0;
 
-// The corner radius of the segmented control.
-//
-// Inspected from iOS 13.2 simulator.
-const double _kCornerRadius = 8;
-
 // The minimum opacity of an unselected segment, when the user presses on the
 // segment and it starts to fadeout.
 //
-// Inspected from iOS 13.2 simulator.
+// Inspected from iOS 17.5 simulator.
 const double _kContentPressedMinOpacity = 0.2;
+
+// Inspected from iOS 17.5 simulator.
+const double _kFontSize = 13.0;
+
+// Inspected from iOS 17.5 simulator.
+const FontWeight _kFontWeight = FontWeight.w500;
+
+// Inspected from iOS 17.5 simulator.
+const FontWeight _kHighlightedFontWeight = FontWeight.w600;
+
+// Inspected from iOS 17.5 simulator
+const Color _kDisabledContentColor = Color.fromARGB(115, 122, 122, 122);
 
 // The spring animation used when the thumb changes its rect.
 final SpringSimulation _kThumbSpringAnimationSimulation = SpringSimulation(
@@ -89,19 +100,23 @@ class _Segment<T> extends StatefulWidget {
     required this.pressed,
     required this.highlighted,
     required this.isDragging,
+    required this.enabled,
+    required this.segmentLocation,
   }) : super(key: key);
 
   final Widget child;
 
   final bool pressed;
   final bool highlighted;
+  final bool enabled;
+  final _SegmentLocation segmentLocation;
 
   // Whether the thumb of the parent widget (CupertinoSlidingSegmentedControl)
   // is currently being dragged.
   final bool isDragging;
 
-  bool get shouldFadeoutContent => pressed && !highlighted;
-  bool get shouldScaleContent => pressed && highlighted && isDragging;
+  bool get shouldFadeoutContent => pressed && !highlighted && enabled;
+  bool get shouldScaleContent => pressed && highlighted && isDragging && enabled;
 
   @override
   _SegmentState<T> createState() => _SegmentState<T>();
@@ -149,6 +164,12 @@ class _SegmentState<T> extends State<_Segment<T>> with TickerProviderStateMixin<
 
   @override
   Widget build(BuildContext context) {
+    final Alignment scaleAlignment = switch (widget.segmentLocation) {
+      _SegmentLocation.leftmost => Alignment.centerLeft,
+      _SegmentLocation.rightmost => Alignment.centerRight,
+      _SegmentLocation.inbetween => Alignment.center,
+    };
+
     return MetaData(
       // Expand the hitTest area of this widget.
       behavior: HitTestBehavior.opaque,
@@ -162,25 +183,26 @@ class _SegmentState<T> extends State<_Segment<T>> with TickerProviderStateMixin<
             child: AnimatedDefaultTextStyle(
               style: DefaultTextStyle.of(context)
                 .style
-                .merge(TextStyle(fontWeight: widget.highlighted ? FontWeight.w500 : FontWeight.normal)),
+                .merge(TextStyle(
+                  fontWeight: widget.highlighted ? _kHighlightedFontWeight : _kFontWeight,
+                  fontSize: _kFontSize,
+                  color: widget.enabled ? null : _kDisabledContentColor,
+                )),
               duration: _kHighlightAnimationDuration,
               curve: Curves.ease,
               child: ScaleTransition(
+                alignment: scaleAlignment,
                 scale: highlightPressScaleAnimation,
                 child: widget.child,
               ),
             ),
           ),
-          // The entire widget will assume the size of this widget, so when a
-          // segment's "highlight" animation plays the size of the parent stays
-          // the same and will always be greater than equal to that of the
-          // visible child (at index 0), to keep the size of the entire
-          // SegmentedControl widget consistent throughout the animation.
-          Offstage(
-            child: DefaultTextStyle.merge(
-              style: const TextStyle(fontWeight: FontWeight.w500),
-              child: widget.child,
+          DefaultTextStyle.merge(
+            style: const TextStyle(
+              fontWeight: _kHighlightedFontWeight,
+              fontSize: _kFontSize,
             ),
+            child: widget.child
           ),
         ],
       ),
@@ -319,6 +341,7 @@ class CupertinoSlidingSegmentedControl<T extends Object> extends StatefulWidget 
     super.key,
     required this.children,
     required this.onValueChanged,
+    this.disabledChildren = const <Never>{},
     this.groupValue,
     this.thumbColor = _kThumbColor,
     this.padding = _kHorizontalItemPadding,
@@ -338,7 +361,26 @@ class CupertinoSlidingSegmentedControl<T extends Object> extends StatefulWidget 
   /// The map must have more than one entry.
   final Map<T, Widget> children;
 
+  /// The set of identifying keys that correspond to the segments that should be
+  /// disabled.
+  ///
+  /// Disabled children cannot be highlighted and don't show any animation
+  /// when they are tapped or long pressed. So if this set contains [groupValue],
+  /// there is no segment getting highlighted until it is switched to an enabled
+  /// segment.
+  ///
+  /// [onValueChanged] will not be called if the segment is disabled. However, if
+  /// an enabled segment is "highlighted" by dragging gesture and becomes disabled
+  /// before dragging stops, [onValueChanged] will be triggered when release finger.
+  ///
+  /// By default, all segments are selectable.
+  final Set<T> disabledChildren;
+
   /// The identifier of the widget that is currently selected.
+  ///
+  /// When there is no highlighted segment in the segmented control, but the [groupValue]
+  /// is not null, it means this this segment was highlighted before but it is
+  /// disabled; if [groupValue] is null, it means no segment is highlighted.
   ///
   /// This must be one of the keys in the [Map] of [children].
   /// If this attribute is null, no widget will be initially selected.
@@ -423,6 +465,8 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
   final HorizontalDragGestureRecognizer drag = HorizontalDragGestureRecognizer();
   final LongPressGestureRecognizer longPress = LongPressGestureRecognizer();
 
+  T? get groupValue => widget.disabledChildren.contains(widget.groupValue) ? null : widget.groupValue;
+
   @override
   void initState() {
     super.initState();
@@ -445,7 +489,7 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
     // Empty callback to enable the long press recognizer.
     longPress.onLongPress = () { };
 
-    highlighted = widget.groupValue;
+    highlighted = groupValue;
   }
 
   @override
@@ -455,10 +499,10 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
     // Temporarily ignore highlight changes from the widget when the thumb is
     // being dragged. When the drag gesture finishes the widget will be forced
     // to build (see the onEnd method), and didUpdateWidget will be called again.
-    if (!isThumbDragging && highlighted != widget.groupValue) {
+    if (!isThumbDragging && highlighted != groupValue) {
       thumbController.animateWith(_kThumbSpringAnimationSimulation);
       thumbAnimatable = null;
-      highlighted = widget.groupValue;
+      highlighted = groupValue;
     }
   }
 
@@ -533,6 +577,11 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
     if (highlighted == newValue) {
       return;
     }
+    // If `disabledChildren` set contains the `groupValue`, then no update
+    // needed.
+    if (widget.disabledChildren.contains(newValue)) {
+      return;
+    }
     setState(() { highlighted = newValue; });
     // Additionally, start the thumb animation if the highlighted segment
     // changes. If the thumbController is already running, the render object's
@@ -545,6 +594,9 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
   }
 
   void onPressedChangedByGesture(T? newValue) {
+    if (widget.disabledChildren.contains(newValue)) {
+      return;
+    }
     if (pressed != newValue) {
       setState(() { pressed = newValue; });
     }
@@ -557,7 +609,11 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
     }
     final T segment = segmentForXPosition(details.localPosition.dx);
     onPressedChangedByGesture(null);
-    if (segment != widget.groupValue) {
+    if (segment != groupValue) {
+      // When disabled segment is tapped, `onValueChanged` should not be called.
+      if (widget.disabledChildren.contains(segment)) {
+        return;
+      }
       widget.onValueChanged(segment);
     }
   }
@@ -589,13 +645,13 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
     final T? pressed = this.pressed;
     if (isThumbDragging) {
       _playThumbScaleAnimation(isExpanding: true);
-      if (highlighted != widget.groupValue) {
+      if (highlighted != groupValue) {
         widget.onValueChanged(highlighted);
       }
     } else if (pressed != null) {
       onHighlightChangedByGesture(pressed);
       assert(pressed == highlighted);
-      if (highlighted != widget.groupValue) {
+      if (highlighted != groupValue) {
         widget.onValueChanged(highlighted);
       }
     }
@@ -649,12 +705,26 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
         );
       }
 
+      final TextDirection textDirection = Directionality.of(context);
+      final _SegmentLocation segmentLocation = switch (textDirection) {
+        TextDirection.ltr when index == 0 => _SegmentLocation.leftmost,
+        TextDirection.ltr when index == widget.children.length - 1 => _SegmentLocation.rightmost,
+        TextDirection.rtl when index == widget.children.length - 1 => _SegmentLocation.leftmost,
+        TextDirection.rtl when index == 0 => _SegmentLocation.rightmost,
+        TextDirection.ltr || TextDirection.rtl => _SegmentLocation.inbetween,
+      };
+
       children.add(
         Semantics(
           button: true,
-          onTap: () { widget.onValueChanged(entry.key); },
+          onTap: () {
+            if (widget.disabledChildren.contains(entry.key)) {
+              return;
+            }
+            widget.onValueChanged(entry.key);
+           },
           inMutuallyExclusiveGroup: true,
-          selected: widget.groupValue == entry.key,
+          selected: groupValue == entry.key,
           child: MouseRegion(
             cursor: kIsWeb ? SystemMouseCursors.click : MouseCursor.defer,
             child: _Segment<T>(
@@ -662,6 +732,8 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
               highlighted: isHighlighted,
               pressed: pressed == entry.key,
               isDragging: isThumbDragging,
+              enabled: !widget.disabledChildren.contains(entry.key),
+              segmentLocation: segmentLocation,
               child: entry.value,
             ),
           ),
@@ -687,9 +759,12 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSlidingSeg
     return UnconstrainedBox(
       constrainedAxis: Axis.horizontal,
       child: Container(
+        // Clip the thumb shadow if it is outside of the segmented control. This
+        // behavior is eyeballed by the iOS 17.5 simulator.
+        clipBehavior: Clip.antiAlias,
         padding: widget.padding.resolve(Directionality.of(context)),
         decoration: BoxDecoration(
-          borderRadius: const BorderRadius.all(Radius.circular(_kCornerRadius)),
+          borderRadius: const BorderRadius.all(_kCornerRadius),
           color: CupertinoDynamicColor.resolve(widget.backgroundColor, context),
         ),
         child: AnimatedBuilder(
@@ -745,6 +820,12 @@ class _SegmentedControlRenderWidget<T extends Object> extends MultiChildRenderOb
 }
 
 class _SegmentedControlContainerBoxParentData extends ContainerBoxParentData<RenderBox> { }
+
+enum _SegmentLocation {
+  leftmost,
+  rightmost,
+  inbetween;
+}
 
 // The behavior of a UISegmentedControl as observed on iOS 13.1:
 //
@@ -1028,6 +1109,9 @@ class _RenderSegmentedControl<T extends Object> extends RenderBox
   void paint(PaintingContext context, Offset offset) {
     final List<RenderBox> children = getChildrenAsList();
 
+    // Children contains both segment and separator and the order is segment ->
+    // separator -> segment. So to paint separators, index should start from 1 and
+    // the step should be 2.
     for (int index = 1; index < childCount; index += 2) {
       _paintSeparator(context, offset, children[index]);
     }
@@ -1061,8 +1145,24 @@ class _RenderSegmentedControl<T extends Object> extends RenderBox
 
       final Rect unscaledThumbRect = state.thumbAnimatable?.evaluate(state.thumbController) ?? newThumbRect;
       currentThumbRect = unscaledThumbRect;
+
+      final _SegmentLocation childLocation;
+      if (highlightedChildIndex == 0) {
+        childLocation = _SegmentLocation.leftmost;
+      } else if (highlightedChildIndex == children.length ~/ 2) {
+        childLocation = _SegmentLocation.rightmost;
+      } else {
+        childLocation = _SegmentLocation.inbetween;
+      }
+
+      final double delta = switch (childLocation) {
+        _SegmentLocation.leftmost => unscaledThumbRect.width - unscaledThumbRect.width * thumbScale,
+        _SegmentLocation.rightmost => unscaledThumbRect.width * thumbScale - unscaledThumbRect.width,
+        _SegmentLocation.inbetween => 0,
+      };
+
       final Rect thumbRect = Rect.fromCenter(
-        center: unscaledThumbRect.center,
+        center: unscaledThumbRect.center - Offset(delta / 2, 0),
         width: unscaledThumbRect.width * thumbScale,
         height: unscaledThumbRect.height * thumbScale,
       );
@@ -1073,6 +1173,9 @@ class _RenderSegmentedControl<T extends Object> extends RenderBox
     }
 
     for (int index = 0; index < children.length; index += 2) {
+      // Children contains both segment and separator and the order is segment ->
+      // separator -> segment. So to paint separators, indes should start from 0 and
+      // the step should be 2.
       _paintChild(context, offset, children[index]);
     }
   }
