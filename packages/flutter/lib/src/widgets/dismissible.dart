@@ -33,6 +33,12 @@ typedef DismissDirectionCallback = void Function(DismissDirection direction);
 /// Used by [Dismissible.confirmDismiss].
 typedef ConfirmDismissCallback = Future<bool?> Function(DismissDirection direction);
 
+/// Signature used by [Dismissible] to determine whether a user gesture
+/// should qualify as a dismissal.
+///
+/// Used by [Dismissible.shouldTriggerDismiss].
+typedef TriggerDismissCallback = bool? Function(TriggerDismissDetails details);
+
 /// Signature used by [Dismissible] to indicate that the dismissible has been dragged.
 ///
 /// Used by [Dismissible.onUpdate].
@@ -81,6 +87,13 @@ enum DismissDirection {
 /// ** See code in examples/api/lib/widgets/dismissible/dismissible.0.dart **
 /// {@end-tool}
 ///
+/// {@tool dartpad}
+/// In this sample, the [shouldTriggerDismiss] callback is used to customize the behavior
+/// of the [Dismissible] widget.
+///
+/// ** See code in examples/api/lib/widgets/dismissible/dismissible.1.dart **
+/// {@end-tool}
+///
 /// Backgrounds can be used to implement the "leave-behind" idiom. If a background
 /// is specified it is stacked behind the Dismissible's child and is exposed when
 /// the child moves.
@@ -105,6 +118,7 @@ class Dismissible extends StatefulWidget {
     this.background,
     this.secondaryBackground,
     this.confirmDismiss,
+    this.shouldTriggerDismiss,
     this.onResize,
     this.onUpdate,
     this.onDismissed,
@@ -142,6 +156,28 @@ class Dismissible extends StatefulWidget {
   /// If the returned `Future<bool?>` completes to false or null the [onResize]
   /// and [onDismissed] callbacks will not run.
   final ConfirmDismissCallback? confirmDismiss;
+
+  /// Whether a drag should be considered as a dismiss gesture.
+  ///
+  /// If `null`, defers to behavior defined in [dismissThresholds].
+  /// (This applies both when the callback returns `null`,
+  /// and when no callback is provided.)
+  ///
+  /// {@tool snippet}
+  /// By default, when the dismiss threshold is not reached, flinging the item
+  /// can still cause it to be dismissed.
+  ///
+  /// This behavior can be prevented with the following [TriggerDismissCallback]:
+  ///
+  /// ```dart
+  /// Dismissible(
+  ///   key: const ValueKey<String>('dismissible-key'),
+  ///   shouldTriggerDismiss: (TriggerDismissDetails details) => details.reached,
+  ///   child: const ListTile(title: Text('Slide me to dismiss')),
+  /// )
+  /// ```
+  /// {@end-tool}
+  final TriggerDismissCallback? shouldTriggerDismiss;
 
   /// Called when the widget changes size (i.e., when contracting before being dismissed).
   final VoidCallback? onResize;
@@ -230,7 +266,7 @@ class Dismissible extends StatefulWidget {
 ///   * [Dismissible.onUpdate], which receives this information.
 class DismissUpdateDetails {
   /// Create a new instance of [DismissUpdateDetails].
-  DismissUpdateDetails({
+  const DismissUpdateDetails({
     this.direction = DismissDirection.horizontal,
     this.reached = false,
     this.previousReached = false,
@@ -257,6 +293,43 @@ class DismissUpdateDetails {
   /// This can be used to synchronize other elements to what the dismissible is doing on screen,
   /// e.g. using this value to set the opacity thereby fading dismissible as it's dragged offscreen.
   final double progress;
+}
+
+/// Details for [TriggerDismissCallback].
+///
+/// See also:
+///
+///   * [Dismissible.shouldTriggerDismiss], which receives this information.
+class TriggerDismissDetails {
+  /// Create a new instance of [TriggerDismissDetails].
+  const TriggerDismissDetails({
+    this.direction = DismissDirection.horizontal,
+    this.reached = false,
+    this.progress = 0.0,
+    this.velocity = 0.0,
+    this.dragExtent = 0.0,
+  });
+
+  /// The direction that the dismissible is being dragged.
+  final DismissDirection direction;
+
+  /// Whether the dismiss threshold is currently reached.
+  final bool reached;
+
+  /// The offset ratio of the dismissible in its parent container.
+  ///
+  /// A value of 0.0 represents the normal position and 1.0 means the child is
+  /// completely outside its parent.
+  final double progress;
+
+  /// Distance from the start of the drag to the current position,
+  /// represented in logical pixels.
+  final double dragExtent;
+
+  /// The component of the velocity parallel to the [DismissDirection].
+  ///
+  /// A fling away from the center will have a positive value.
+  final double velocity;
 }
 
 class _DismissibleClipper extends CustomClipper<Rect> {
@@ -335,11 +408,10 @@ class _DismissibleState extends State<Dismissible> with TickerProviderStateMixin
     super.dispose();
   }
 
-  bool get _directionIsXAxis {
-    return widget.direction == DismissDirection.horizontal
-        || widget.direction == DismissDirection.endToStart
-        || widget.direction == DismissDirection.startToEnd;
-  }
+  bool get _directionIsXAxis => switch (widget.direction) {
+    DismissDirection.horizontal || DismissDirection.endToStart || DismissDirection.startToEnd => true,
+    DismissDirection.vertical || DismissDirection.up || DismissDirection.down || DismissDirection.none => false,
+  };
 
   DismissDirection _extentToDirection(double extent) {
     if (extent == 0.0) {
@@ -441,7 +513,7 @@ class _DismissibleState extends State<Dismissible> with TickerProviderStateMixin
   }
 
   void _handleDismissUpdateValueChanged() {
-    if (widget.onUpdate != null) {
+    if (widget.onUpdate case final DismissUpdateCallback onUpdate) {
       final bool oldDismissThresholdReached = _dismissThresholdReached;
       _dismissThresholdReached = _moveController.value > _dismissThreshold;
       final DismissUpdateDetails details = DismissUpdateDetails(
@@ -450,7 +522,7 @@ class _DismissibleState extends State<Dismissible> with TickerProviderStateMixin
           previousReached: oldDismissThresholdReached,
           progress: _moveController.value,
       );
-      widget.onUpdate!(details);
+      onUpdate(details);
     }
   }
 
@@ -503,11 +575,41 @@ class _DismissibleState extends State<Dismissible> with TickerProviderStateMixin
       return;
     }
     _dragUnderway = false;
+
+    final double flingVelocity = _directionIsXAxis ? details.velocity.pixelsPerSecond.dx : details.velocity.pixelsPerSecond.dy;
+
+    // Use value returned by `shouldTriggerDismiss` if a callback is provided.
+    // If the callback returns null, use the default behavior.
+    if (widget.shouldTriggerDismiss case final TriggerDismissCallback shouldDismissCallback) {
+      final TriggerDismissDetails triggerDismissDetails = TriggerDismissDetails(
+        direction: _dismissDirection,
+        reached: _moveController.value > _dismissThreshold,
+        progress: _moveController.value,
+        velocity: flingVelocity.abs(),
+        dragExtent: _dragExtent,
+      );
+
+      final bool? shouldDismiss = shouldDismissCallback(triggerDismissDetails);
+
+      if (shouldDismiss != null) {
+        if (_moveController.isDismissed) {
+          return;
+        }
+
+        if (shouldDismiss) {
+          _moveController.forward();
+        } else {
+          _moveController.reverse();
+        }
+        return;
+      }
+    }
+
     if (_moveController.isCompleted) {
       _handleMoveCompleted();
       return;
     }
-    final double flingVelocity = _directionIsXAxis ? details.velocity.pixelsPerSecond.dx : details.velocity.pixelsPerSecond.dy;
+
     switch (_describeFlingGesture(details.velocity)) {
       case _FlingGestureKind.forward:
         assert(_dragExtent != 0.0);
