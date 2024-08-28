@@ -613,14 +613,30 @@ class _DropdownMenuState<T> extends State<DropdownMenu<T>> {
       .toList();
   }
 
+  bool _shouldUpdateCurrentHighlight(List<DropdownMenuEntry<T>> entries, TextEditingController textEditingController) {
+    final String searchText = textEditingController.value.text.toLowerCase();
+    if (searchText.isEmpty) {
+      return true;
+    }
+
+    // When `entries` are filtered by filter algorithm, currentHighlight may exceed the valid range of `entries` and should be updated.
+    if (currentHighlight == null || currentHighlight! >= entries.length) {
+      return true;
+    }
+
+    if (entries[currentHighlight!].label.toLowerCase().contains(searchText)) {
+      return false;
+    }
+
+    return true;
+  }
+
   int? search(List<DropdownMenuEntry<T>> entries, TextEditingController textEditingController) {
     final String searchText = textEditingController.value.text.toLowerCase();
     if (searchText.isEmpty) {
       return null;
     }
-    if (currentHighlight != null && entries[currentHighlight!].label.toLowerCase().contains(searchText)) {
-      return currentHighlight;
-    }
+
     final int index = entries.indexWhere((DropdownMenuEntry<T> entry) => entry.label.toLowerCase().contains(searchText));
 
     return index != -1 ? index : null;
@@ -766,7 +782,10 @@ class _DropdownMenuState<T> extends State<DropdownMenu<T>> {
       if (widget.searchCallback != null) {
         currentHighlight = widget.searchCallback!(filteredEntries, _localTextEditingController!.text);
       } else {
-        currentHighlight = search(filteredEntries, _localTextEditingController!);
+        final bool shouldUpdateCurrentHighlight = _shouldUpdateCurrentHighlight(filteredEntries, _localTextEditingController!);
+        if (shouldUpdateCurrentHighlight) {
+          currentHighlight = search(filteredEntries, _localTextEditingController!);
+        }
       }
       if (currentHighlight != null) {
         scrollToHighlight();
