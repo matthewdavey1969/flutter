@@ -253,6 +253,44 @@ void main() {
       expect(artifact2.didUpdate, true);
     });
 
+    testWithoutContext('should print status messages about each artifact update (grouped by development artifact)', () async {
+      final FakeSecondaryCachedArtifact artifact1 = FakeSecondaryCachedArtifact()
+        ..upToDate = false
+        ..name = 'artifact1'
+        ..developmentArtifact = DevelopmentArtifact.androidGenSnapshot;
+      final FakeSecondaryCachedArtifact artifact2 = FakeSecondaryCachedArtifact()
+        ..upToDate = false
+        ..name = 'artifact2'
+        ..developmentArtifact = DevelopmentArtifact.universal;
+      final FileSystem fileSystem = MemoryFileSystem.test();
+
+      final BufferLogger logger = BufferLogger.test();
+      final Cache cache = Cache.test(
+        fileSystem: fileSystem,
+        artifacts: <CachedArtifact>[artifact1, artifact2],
+        logger: logger,
+        processManager: FakeProcessManager.any(),
+      );
+
+      await cache.updateAll(<DevelopmentArtifact>{
+        DevelopmentArtifact.universal,
+        DevelopmentArtifact.androidGenSnapshot
+      });
+      expect(
+        logger.statusText,
+        'Downloading artifact1 (1 of 2)...\n'
+        'Downloading artifact2 (2 of 2)...\n',
+      );
+
+      artifact1.upToDate = false;
+      logger.clear();
+      await cache.updateAll(<DevelopmentArtifact>{
+        DevelopmentArtifact.androidGenSnapshot,
+      });
+      // Don't print (1 of 1)
+      expect(logger.statusText, 'Downloading artifact1...\n');
+    });
+
     testWithoutContext("getter dyLdLibEntry concatenates the output of each artifact's dyLdLibEntry getter", () async {
       final FakeIosUsbArtifacts artifact1 = FakeIosUsbArtifacts();
       final FakeIosUsbArtifacts artifact2 = FakeIosUsbArtifacts();
@@ -414,7 +452,7 @@ void main() {
 
     Uri? packageUrl;
     final ArtifactUpdater artifactUpdater = FakeArtifactUpdater()
-      ..onDownloadZipArchive = (String message, Uri url, Directory location) {
+      ..onDownloadZipArchive = (Uri url, Directory location) {
         location.childDirectory('package_dir').createSync();
         packageUrl = url;
       };
@@ -819,11 +857,9 @@ void main() {
     final FakeArtifactUpdater artifactUpdater = FakeArtifactUpdater();
     final FlutterWebSdk webSdk = FlutterWebSdk(cache);
 
-    final List<String> messages = <String>[];
     final List<String> downloads = <String>[];
     final List<String> locations = <String>[];
-    artifactUpdater.onDownloadZipArchive = (String message, Uri uri, Directory location) {
-      messages.add(message);
+    artifactUpdater.onDownloadZipArchive = (Uri uri, Directory location) {
       downloads.add(uri.toString());
       locations.add(location.path);
       location.createSync(recursive: true);
@@ -832,10 +868,6 @@ void main() {
     webCacheDirectory.childFile('bar').createSync(recursive: true);
 
     await webSdk.updateInner(artifactUpdater, fileSystem, FakeOperatingSystemUtils());
-
-    expect(messages, <String>[
-      'Downloading Web SDK...',
-    ]);
 
     expect(downloads, <String>[
       'https://storage.googleapis.com/flutter_infra_release/flutter/hijklmnop/flutter-web-sdk.zip',
@@ -878,7 +910,7 @@ void main() {
 
     final List<String> downloads = <String>[];
     final List<String> locations = <String>[];
-    artifactUpdater.onDownloadZipArchive = (String message, Uri uri, Directory location) {
+    artifactUpdater.onDownloadZipArchive = (Uri uri, Directory location) {
       downloads.add(uri.toString());
       locations.add(location.path);
       location.createSync(recursive: true);
@@ -901,7 +933,7 @@ void main() {
     final FakeArtifactUpdater artifactUpdater = FakeArtifactUpdater();
     final FlutterWebSdk webSdk = FlutterWebSdk(cache);
 
-    artifactUpdater.onDownloadZipArchive = (String message, Uri uri, Directory location) {
+    artifactUpdater.onDownloadZipArchive = (Uri uri, Directory location) {
       location.createSync(recursive: true);
       location.childFile('foo').createSync();
     };
@@ -1164,6 +1196,9 @@ class FakeCachedArtifact extends EngineCachedArtifact {
 
   @override
   List<String> getPackageDirs() => packageDirs;
+
+  @override
+  bool get logUpdates => true;
 }
 
 class FakeSimpleArtifact extends CachedArtifact {
@@ -1175,6 +1210,9 @@ class FakeSimpleArtifact extends CachedArtifact {
 
   @override
   Future<void> updateInner(ArtifactUpdater artifactUpdater, FileSystem fileSystem, OperatingSystemUtils operatingSystemUtils) async { }
+
+  @override
+  bool get logUpdates => true;
 }
 
 class FakeSecondaryCachedArtifact extends Fake implements CachedArtifact {
@@ -1194,7 +1232,16 @@ class FakeSecondaryCachedArtifact extends Fake implements CachedArtifact {
   }
 
   @override
-  DevelopmentArtifact get developmentArtifact => DevelopmentArtifact.universal;
+  DevelopmentArtifact developmentArtifact = DevelopmentArtifact.universal;
+
+  @override
+  String name = 'fake_secondary_cached_artifact';
+
+  @override
+  String get stampName => name;
+
+  @override
+  bool get logUpdates => true;
 }
 
 class FakeIosUsbArtifacts extends Fake implements IosUsbArtifacts {
@@ -1203,6 +1250,9 @@ class FakeIosUsbArtifacts extends Fake implements IosUsbArtifacts {
 
   @override
   String stampName = 'ios-usb';
+
+  @override
+  bool get logUpdates => true;
 }
 
 class FakeSecondaryCache extends Fake implements Cache {
@@ -1306,17 +1356,17 @@ class FakeAndroidSdk extends Fake implements AndroidSdk {
 }
 
 class FakeArtifactUpdater extends Fake implements ArtifactUpdater {
-  void Function(String, Uri, Directory)? onDownloadZipArchive;
-  void Function(String, Uri, Directory)? onDownloadZipTarball;
+  void Function(Uri, Directory)? onDownloadZipArchive;
+  void Function(Uri, Directory)? onDownloadZipTarball;
 
   @override
-  Future<void> downloadZippedTarball(String message, Uri url, Directory location) async {
-    onDownloadZipTarball?.call(message, url, location);
+  Future<void> downloadZippedTarball(Uri url, Directory location) async {
+    onDownloadZipTarball?.call(url, location);
   }
 
   @override
-  Future<void> downloadZipArchive(String message, Uri url, Directory location) async {
-    onDownloadZipArchive?.call(message, url, location);
+  Future<void> downloadZipArchive(Uri url, Directory location) async {
+    onDownloadZipArchive?.call(url, location);
   }
 
   @override
